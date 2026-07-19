@@ -1,0 +1,57 @@
+{
+  "name": "gcode-preview",
+  "displayName": "G-code Live Preview",
+  "description": "Edit G-code in VS Code and see a live 3D preview, colored by fan state (M106/M107).",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gcodePreview.open",
+        "title": "G-code: Open Live Preview"
+      }
+    ],
+    "languages": [
+      {
+        "id": "gcode",
+        "aliases": [
+          "G-code",
+          "gcode"
+        ],
+        "extensions": [
+          ".gcode",
+          ".gco",
+          ".g",
+          ".nc"
+        ]
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "gcodePreview.open",
+          "when": "resourceExtname == .gcode || resourceExtname == .gco || resourceExtname == .g",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "three": "^0.128.0",
+    "typescript": "^5.4.0"
+  }
+}

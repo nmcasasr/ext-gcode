@@ -1,0 +1,12 @@
+# Only out/ + media/ are needed at runtime. Everything else is build-time or
+# test fixtures, and node_modules would drag typescript + three into the vsix.
+.vscode/**
+node_modules/**
+src/**
+tools/**
+**/*.ts
+**/*.map
+tsconfig.json
+.gitignore
+*.gcode
+*.stl

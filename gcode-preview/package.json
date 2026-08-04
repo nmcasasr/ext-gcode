@@ -3,6 +3,7 @@
   "displayName": "G-code Live Preview",
   "description": "Edit G-code in VS Code and see a live 3D preview, colored by fan state (M106/M107).",
   "version": "0.0.1",
+  "publisher": "nicolas",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -17,6 +18,34 @@
       {
         "command": "gcodePreview.open",
         "title": "G-code: Open Live Preview"
+      },
+      {
+        "command": "gcodePreview.sliceVase",
+        "title": "STL → Vase G-code"
+      },
+      {
+        "command": "gcodePreview.clampOverhangs",
+        "title": "STL → Clamp Overhangs (fixed STL)"
+      },
+      {
+        "command": "gcodePreview.sliceWithOrca",
+        "title": "STL → Slice with OrcaSlicer"
+      },
+      {
+        "command": "gcodePreview.pipeline",
+        "title": "STL → Pipeline (Clamp → Orca → Preview)"
+      },
+      {
+        "command": "gcodePreview.watchGcode",
+        "title": "G-code: Watch File for Changes"
+      },
+      {
+        "command": "gcodePreview.watchFolder",
+        "title": "G-code: Watch Folder (preview newest)"
+      },
+      {
+        "command": "gcodePreview.stopWatching",
+        "title": "G-code: Stop Watching"
       }
     ],
     "languages": [
@@ -40,13 +69,93 @@
           "command": "gcodePreview.open",
           "when": "resourceExtname == .gcode || resourceExtname == .gco || resourceExtname == .g",
           "group": "navigation"
+        },
+        {
+          "command": "gcodePreview.sliceVase",
+          "when": "resourceExtname == .stl",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "gcodePreview.sliceVase",
+          "when": "resourceExtname == .stl",
+          "group": "gcodePreview@1"
+        },
+        {
+          "command": "gcodePreview.clampOverhangs",
+          "when": "resourceExtname == .stl",
+          "group": "gcodePreview@2"
+        },
+        {
+          "command": "gcodePreview.sliceWithOrca",
+          "when": "resourceExtname == .stl",
+          "group": "gcodePreview@3"
+        },
+        {
+          "command": "gcodePreview.pipeline",
+          "when": "resourceExtname == .stl",
+          "group": "gcodePreview@4"
+        },
+        {
+          "command": "gcodePreview.watchGcode",
+          "when": "resourceExtname == .gcode || resourceExtname == .gco || resourceExtname == .g",
+          "group": "gcodePreview@1"
+        },
+        {
+          "command": "gcodePreview.watchFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "gcodePreview@1"
         }
       ]
+    },
+    "configuration": {
+      "title": "G-code Preview",
+      "properties": {
+        "gcodePreview.layerHeight": {
+          "type": "number",
+          "default": 0.3,
+          "description": "Layer height (mm) used by the vase slicer and overhang clamp."
+        },
+        "gcodePreview.clampAngle": {
+          "type": "number",
+          "default": 45,
+          "description": "Overhang clamp: max wall angle from vertical (deg). Walls steeper than this are pulled inward."
+        },
+        "gcodePreview.orcaBinary": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the OrcaSlicer executable. macOS: /Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer"
+        },
+        "gcodePreview.orcaMachine": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Orca machine (printer) settings JSON, exported from OrcaSlicer."
+        },
+        "gcodePreview.orcaProcess": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Orca process (print profile) settings JSON."
+        },
+        "gcodePreview.orcaFilament": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Orca filament settings JSON."
+        },
+        "gcodePreview.orcaExtraArgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra CLI arguments passed to OrcaSlicer."
+        }
+      }
     }
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "npm run compile && npx --yes @vscode/vsce package --allow-missing-repository --skip-license -o gcode-preview.vsix",
+    "reinstall": "npm run package && \"$HOME/Desktop/Visual Studio Code.app/Contents/Resources/app/bin/code\" --install-extension gcode-preview.vsix --force"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

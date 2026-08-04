@@ -1,0 +1,11 @@
+node_modules/
+*.vsix
+
+# Build output — rebuilt by `npm run compile` (and by F5's preLaunchTask).
+out/
+
+# Generated fixtures. cone.stl and sample.gcode ARE committed: cone.stl has no
+# generator and the README uses it to exercise the overhang clamp.
+vase.stl
+*.vase.gcode
+test_code.gcode

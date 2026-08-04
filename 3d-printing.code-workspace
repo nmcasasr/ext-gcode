@@ -1,0 +1,64 @@
+{
+  "folders": [
+    {
+      "name": "gcode-preview",
+      "path": "gcode-preview"
+    },
+    {
+      "name": "lamparas",
+      "path": "vacante-g-code/fullcontrol-lamparas"
+    }
+  ],
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Run Extension (abre lamparas)",
+        "type": "extensionHost",
+        "request": "launch",
+        "args": [
+          "--extensionDevelopmentPath=${workspaceFolder:gcode-preview}",
+          "${workspaceFolder:lamparas}"
+        ],
+        "outFiles": [
+          "${workspaceFolder:gcode-preview}/out/**/*.js"
+        ],
+        "preLaunchTask": "compilar gcode-preview"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "compilar gcode-preview",
+        "type": "shell",
+        "command": "npm run compile",
+        "options": {
+          "cwd": "${workspaceFolder:gcode-preview}"
+        },
+        "problemMatcher": "$tsc",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        }
+      },
+      {
+        "label": "watch gcode-preview",
+        "type": "shell",
+        "command": "npm run watch",
+        "options": {
+          "cwd": "${workspaceFolder:gcode-preview}"
+        },
+        "problemMatcher": "$tsc-watch",
+        "isBackground": true
+      }
+    ]
+  },
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.egg-info": true
+    }
+  }
+}

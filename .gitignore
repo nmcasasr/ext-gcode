@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+*.vsix
+
+# vacante-g-code is its OWN repository (github.com/nmcasasr/vacante-g-code).
+# Without this, `git add` here records it as a bare gitlink — a half-submodule
+# that clones as an empty directory. Keep the two repos separate.
+vacante-g-code/

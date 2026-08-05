@@ -86,6 +86,68 @@ Two details that make this reliable, both load-bearing:
   `.gcode.tmp` and renames, so a reader sees either the old file or the whole
   new one — never half of either.
 
+## Printing it — no SD card
+
+The A1 will not start a plain `.gcode`: Bambu Studio and the firmware only accept
+a `.gcode.3mf` container. And the OrcaSlicer CLI cannot send one — checked
+against 2.4.2, there is no `--send`, `--upload` or `--print-host`; "Upload &
+Print" exists only in the GUI. So we build the container ourselves.
+
+**"G-code → Bambu 3mf (printable over LAN)"** (also on the right-click menu of
+any `.gcode`) wraps a toolpath in a real `.gcode.3mf`. Open the result in Bambu
+Studio and press Print.
+
+It needs a **template** the first time: a `.gcode.3mf` you exported from
+OrcaSlicer for *your* printer and nozzle (slice anything — a cube is ideal — and
+"Export plate sliced file"). The command asks for it once and remembers it in
+`gcodePreview.bambuTemplate`. The template is what makes the output
+machine-correct: its machine start/end g-code, its bed levelling, its filament
+settings are all reused verbatim. We never synthesise Bambu start g-code.
+
+What gets rebuilt around your toolpath:
+
+- The **md5** in `Metadata/plate_1.gcode.md5`. The firmware checks it; leaving
+  the template's would get the job rejected.
+- The **adaptive bed mesh** (`G29 A1 X… Y… I… J…`), re-aimed at your model's
+  real first-layer footprint. The template's numbers probe the *old* object's
+  area — a 29.6 mm cube's mesh levels nothing under a 150 mm lamp.
+- **Progress**: `M73` percent/time and layer markers, spread across the body.
+  Without this the display jumps to 47 % before the first extrusion (the cube's
+  start g-code alone climbs that high), sits there all print, then snaps to 98 %.
+- **Layer markers** — `; CHANGE_LAYER` / `; Z_HEIGHT:` / `; LAYER_HEIGHT:` per
+  layer, against real Z. These are not decoration: a slicer's viewer builds its
+  layer slider from them and takes `; Z_HEIGHT:` as authoritative over the Z in
+  the moves. Emitting one at the top of the graft rendered a 58 mm bowl as a flat
+  pancake. `; LAYER_HEIGHT:` is the *bead* height (derived from the flow), not
+  the spiral pitch — viewers draw width as volume / (length · that), so the pitch
+  drew 0.277 mm beads for a 0.800 mm bead and the whole model looked full of
+  holes.
+- **The five preview PNGs**, rendered from the toolpath in the filament colour.
+- Header layer count / max Z, the plate bbox, and the weight and time estimates.
+
+Your g-code's own start/end block is stripped. It recognises the FullControl
+lamps' `;===== FIN DEL START GCODE =====` markers, an existing Orca export, or
+falls back to dropping `G28`/`G29`/`M104`/`M109`/`M140`/`M190`/`M84`. The
+positioning and extrusion mode (`G90`/`G91`, `M82`/`M83`) is carried across the
+cut and re-declared — FullControl puts its `M83` in the header, above the
+marker, so a body read as absolute decodes to nonsense.
+
+From the terminal instead:
+
+```bash
+node tools/make-3mf.js path/to/file.gcode --template ref.gcode.3mf
+```
+
+Two things to know:
+
+- **The thumbnails are rendered from the toolpath**, not from a mesh — the 3mf
+  has no geometry. For spiralised and openwork pieces that is exactly right, the
+  object *is* its toolpath. A densely infilled solid would read as a scribble;
+  slice those normally instead. (`src/thumbnail.ts` + `src/png.ts`, no deps.)
+- **The nozzle must match.** The template records a nozzle diameter and the
+  printer refuses the job if it differs from the one installed. Temperatures come
+  from the template too, not from your generator's start g-code.
+
 Test fixtures: `node tools/make-vase-stl.js` (twisted vase) and `cone.stl` (a
 steep 62° flare — good for seeing the clamp work). Report any g-code's overhangs
 from the terminal with `node tools/overhang-report.js <file.gcode>`.

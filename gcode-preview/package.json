@@ -46,6 +46,10 @@
       {
         "command": "gcodePreview.stopWatching",
         "title": "G-code: Stop Watching"
+      },
+      {
+        "command": "gcodePreview.packBambu3mf",
+        "title": "G-code → Bambu 3mf (printable over LAN)"
       }
     ],
     "languages": [
@@ -106,6 +110,11 @@
           "command": "gcodePreview.watchFolder",
           "when": "explorerResourceIsFolder",
           "group": "gcodePreview@1"
+        },
+        {
+          "command": "gcodePreview.packBambu3mf",
+          "when": "resourceExtname == .gcode || resourceExtname == .gco || resourceExtname == .g",
+          "group": "gcodePreview@2"
         }
       ]
     },
@@ -147,6 +156,11 @@
           "items": { "type": "string" },
           "default": [],
           "description": "Extra CLI arguments passed to OrcaSlicer."
+        },
+        "gcodePreview.bambuTemplate": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a .gcode.3mf exported from OrcaSlicer for YOUR printer and nozzle, used as the template when packing a .gcode for LAN printing. Its machine start/end g-code and settings are reused verbatim, so the nozzle diameter it was sliced with must match the one physically installed or the printer rejects the job."
         }
       }
     }

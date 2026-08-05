@@ -6,6 +6,7 @@ import { parseStl } from './stl';
 import { sliceVase, DEFAULT_OPTIONS } from './vase';
 import { clampOverhangs } from './clamp';
 import { runOrca, extractGcodeFrom3mf, OrcaConfig } from './orca';
+import { packBambu3mf } from './bambu';
 
 export function activate(context: vscode.ExtensionContext) {
   let panel: vscode.WebviewPanel | undefined;
@@ -422,6 +423,59 @@ export function activate(context: vscode.ExtensionContext) {
 
   const stopWatch = vscode.commands.registerCommand('gcodePreview.stopWatching', () => stopWatching());
   context.subscriptions.push(stopWatch);
+
+  // Wrap a .gcode in a Bambu .gcode.3mf so it can be printed over LAN — the A1
+  // refuses plain g-code, and the Orca CLI has no send/upload option (checked on
+  // 2.4.2: "Upload & Print" exists only in the GUI). Needs a template: a real
+  // .gcode.3mf the user exported from Orca for their own machine and nozzle.
+  async function bambuTemplate(): Promise<Buffer | undefined> {
+    const c = vscode.workspace.getConfiguration('gcodePreview');
+    const configured = c.get<string>('bambuTemplate') || '';
+    if (configured && fs.existsSync(configured)) {
+      return fs.promises.readFile(configured);
+    }
+    const picked = await vscode.window.showOpenDialog({
+      canSelectMany: false,
+      openLabel: 'Use as Bambu template',
+      title: 'Pick a .gcode.3mf exported from OrcaSlicer for your printer',
+      filters: { 'Bambu g-code project': ['3mf'] }
+    });
+    if (!picked || !picked[0]) { return undefined; }
+    // Remember it: the template is per-printer, not per-file.
+    await c.update('bambuTemplate', picked[0].fsPath, vscode.ConfigurationTarget.Global);
+    return fs.promises.readFile(picked[0].fsPath);
+  }
+
+  const packBambu = vscode.commands.registerCommand('gcodePreview.packBambu3mf', async (arg?: vscode.Uri) => {
+    const src = arg || vscode.window.activeTextEditor?.document.uri;
+    if (!src || !GCODE_RE.test(src.fsPath)) {
+      vscode.window.showErrorMessage('Open or right-click a .gcode file first.');
+      return;
+    }
+    try {
+      const template = await bambuTemplate();
+      if (!template) { return; }
+
+      const name = path.basename(src.fsPath).replace(GCODE_RE, '');
+      const gcode = await fs.promises.readFile(src.fsPath, 'utf8');
+      const result = packBambu3mf(template, gcode, name);
+      const outPath = path.join(path.dirname(src.fsPath), `${name}.gcode.3mf`);
+      await fs.promises.writeFile(outPath, result.zip);
+
+      const s = result.stats;
+      const choice = await vscode.window.showInformationMessage(
+        `${name}.gcode.3mf — ${s.layerCount} layers, ${Math.round(s.seconds / 60)} min, ` +
+          `${(s.filamentMm / 1000).toFixed(1)} m filament. Open it in Bambu Studio and press Print.`,
+        'Reveal in Finder'
+      );
+      if (choice === 'Reveal in Finder') {
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(outPath));
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage('Could not pack the .gcode.3mf: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  });
+  context.subscriptions.push(packBambu);
 
   // Hot reload on save.
   context.subscriptions.push(

@@ -110,6 +110,61 @@ M104 S240                            ← después: sobrevive verbatim
 Revisar siempre el bbox y recentrar: una pieza para cama de 180×180 viene
 centrada en (90, 90) y en la A1 (256×256) queda descentrada.
 
+## La regla del apoyo: corrimiento lateral vs ancho de cordón
+
+**El ángulo de la pared no importa. Lo que importa es cuánto se corre cada vuelta
+hacia afuera comparado con el ancho del cordón.**
+
+```
+corre_por_vuelta = paso_z · (dr/dz de la silueta)
+corre / ancho_cordon  ≤ ~55 %
+```
+
+Mientras se cumpla, cada vuelta pisa parcialmente la de abajo y se sostiene sola,
+aunque la pared esté a 66°. Si se pasa de 100 %, la vuelta cuelga más allá de su
+propio ancho y no hay parámetro de proceso que lo salve.
+
+Medido en el gcode de referencia (Squeezy Fidget Toy): las cuatro secciones están
+en 51-52 % (macizas) y 88-91 % (caladas, al límite). **Paga con vueltas**: 51
+vueltas para 25 mm. Cambia velocidad vertical por apoyo, y eso es todo el truco
+de sus voladizos sin soporte.
+
+Un bowl de celosía de 150 mm estaba en **125 %** — roto por diseño, e invisible
+mientras se probaba con probetas chicas que daban 48 %. **Medir siempre la pieza
+real, no solo la probeta.** Bajar `amplitud_z` a 0.5 (que reduce `paso_z`) y
+subir `ancho_linea` a 1.0 lo llevó a 55 %.
+
+Las tres reglas del calado tienen que cerrar juntas, y con `solape=0.30` y
+`amplitud_z=0.5` cierran las tres a la vez:
+
+| | fórmula | valor |
+|---|---|---|
+| apoyo | `paso_z·(dr/dz) ≤ 0.55·ancho` | 55 % |
+| transición | `2·amplitud·(1−2·solape) ≤ altura_cordón` | 0.40 = 0.40 |
+| mordida | `2·amplitud·solape` | 0.30 mm |
+
+**Límite conocido**: `paso_z` es constante en toda la pieza. Para siluetas cuyo
+flare se acelera (campana, trompeta) haría falta `paso_z` en función de la
+altura, ligado a la pendiente. El squeezy baja a 0.03 mm/vuelta donde la pared
+queda casi horizontal.
+
+## El ventilador sigue la ESTRUCTURA, no es un valor global
+
+Medido en el gcode de referencia: **0 % en toda la sección maciza (Z 0.4–27.6) y
+100 % en cuanto empieza el calado**. No es un compromiso, es que no son la misma
+zona de la pieza:
+
+- **Macizo → sin aire.** Es donde se ve la superficie; el aire arruina la
+  transparencia y la adhesión entre capas, y no hay voladizo que enfriar.
+- **Calado → aire máximo.** Los puentes se congelan. No hay superficie que
+  arruinar, es todo hilo y aire.
+
+Esto **resuelve el conflicto claridad/calado** que parece irreconciliable si uno
+piensa el ventilador como un número único. Usar `--ventilador 0` +
+`--ventilador-en ALTURA:100`. En una placa de probetas, el dict de `cambios`
+tiene que ser **uno por probeta**: uno compartido lo consume la primera y las
+demás imprimen el calado sin ventilador.
+
 ## Patrones calados (celosía)
 
 El patrón suelda **solo en los cruces**; entre ellos el cordón puentea al aire
@@ -158,6 +213,23 @@ cuajar la soldadura antes de salir al aire. La retracción no es opcional (si no
 grumo); en extrusión relativa se cancela sola y no ensucia la contabilidad de E.
 Va en el **cruce**, no en el pico: en el pico el material está en el aire y la
 pausa solo le da tiempo de descolgarse. Cuesta caro: 430 cruces × 1.5 s = 11 min.
+
+## La base maciza sigue el contorno, y el espaciado se calcula contra el máximo
+
+`_espiral_base` recibe la **función de contorno**, no un radio: cada vuelta de la
+espiral es una copia a escala de la silueta. Una base circular bajo una pieza
+cuyo radio ondula (el twist va de 36 a 44 mm) deja un anillo que no pertenece a
+la figura, y donde la pared se sale del círculo queda colgando desde la primera
+capa.
+
+**El avance por vuelta se calcula contra el radio MÁXIMO del contorno.** Al
+escalar la espiral, las vueltas quedan más juntas donde la forma es angosta y
+más separadas donde es ancha; si en la parte ancha se separan más que el ancho
+de cordón, la base sale calada. Contra el máximo, la parte ancha da justo y la
+angosta queda con más solape — que es el lado seguro del error.
+
+Y hay que bajar `capas_transicion` a 0 en las piezas con base moldeada: con la
+transición la pared arranca como círculo liso y no calza con una base ondulada.
 
 ## Placas de varias probetas
 
